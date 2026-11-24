@@ -159,7 +159,7 @@ export function CalendarView() {
   }
 
   return (
-    <div className="h-full min-h-0" aria-label="Calendário da viagem">
+    <div className="calendar-view-shell h-full min-h-0" aria-label="Calendário da viagem">
       <FullCalendar
         ref={ref}
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}

@@ -21,6 +21,7 @@ export type RightTab = 'details' | 'editor' | 'costs'
 
 interface State {
   ready: boolean
+  tripEntered: boolean
   data: TravelData
   library: TripSummary[]
   notice: { kind: 'info' | 'error'; text: string } | null
@@ -35,6 +36,7 @@ interface State {
   tripDialog: 'create' | 'edit' | null
 
   init: () => Promise<void>
+  enterTrip: (id: string) => Promise<void>
   setNotice: (n: State['notice']) => void
   setSection: (s: Section) => void
   setCalView: (v: CalView) => void
@@ -101,6 +103,7 @@ export const useTravelStore = create<State>((set, get) => {
 
   return {
     ready: false,
+    tripEntered: false,
     data: createEmptyData(),
     library: [],
     notice: null,
@@ -114,7 +117,7 @@ export const useTravelStore = create<State>((set, get) => {
     tripDialog: null,
 
     init: async () => {
-      set({ ready: false, notice: null })
+      set({ ready: false, tripEntered: false, notice: null })
       try {
         set({ calView: (localStorage.getItem(VIEW_KEY) as CalView | null) ?? 'week' })
         let library = await storage.list()
@@ -148,6 +151,22 @@ export const useTravelStore = create<State>((set, get) => {
       }
     },
 
+    enterTrip: async (id) => {
+      if (id === get().data.trip.id && get().tripEntered) {
+        set({ section: 'calendar', calView: 'month' })
+        localStorage.setItem(VIEW_KEY, 'month')
+        return
+      }
+      const data = await storage.load(id)
+      if (!data) {
+        set({ notice: { kind: 'error', text: 'Não foi possível carregar essa viagem.' } })
+        return
+      }
+      await activate(data)
+      localStorage.setItem(VIEW_KEY, 'month')
+      set({ tripEntered: true, section: 'calendar', calView: 'month' })
+    },
+
     setNotice: (notice) => set({ notice }),
     setSection: (section) => set({ section }),
     setCalView: (calView) => {
@@ -173,7 +192,8 @@ export const useTravelStore = create<State>((set, get) => {
         await persistNow()
         const data = createEmptyData(t)
         await activate(data)
-        set({ section: 'calendar' })
+        set({ tripEntered: true, section: 'calendar', calView: 'month' })
+        localStorage.setItem(VIEW_KEY, 'month')
       })()
     },
     updateTrip: (t) => commit((d) => ({ ...d, trip: { ...d.trip, ...t } })),
@@ -190,12 +210,17 @@ export const useTravelStore = create<State>((set, get) => {
       await activate(next)
     },
     switchTrip: async (id) => {
-      if (id === get().data.trip.id) return
+      if (id === get().data.trip.id) {
+        set({ tripEntered: true, section: 'calendar', calView: 'month', focusDate: get().data.trip.startDate })
+        localStorage.setItem(VIEW_KEY, 'month')
+        return
+      }
       await persistNow()
       const data = await storage.load(id)
       if (data) {
         await activate(data)
-        set({ section: 'calendar' })
+        localStorage.setItem(VIEW_KEY, 'month')
+        set({ tripEntered: true, section: 'calendar', calView: 'month' })
       }
     },
     importData: (incoming) => {
@@ -203,7 +228,8 @@ export const useTravelStore = create<State>((set, get) => {
         await persistNow()
         const data = { ...incoming, trip: { ...incoming.trip, id: uid('trip') } }
         await activate(data)
-        set({ section: 'calendar', notice: { kind: 'info', text: `Viagem "${data.trip.title}" importada como uma cópia.` } })
+        localStorage.setItem(VIEW_KEY, 'month')
+        set({ tripEntered: true, section: 'calendar', calView: 'month', notice: { kind: 'info', text: `Viagem "${data.trip.title}" importada como uma cópia.` } })
       })()
     },
 

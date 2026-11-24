@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { CalendarDays, Clock, Plus, Trash2 } from 'lucide-react'
 import type { EventType, TravelEvent } from '@/domain/types'
 import { EVENT_TYPES } from '@/domain/types'
 import { CURRENCIES, DEFAULT_TAGS, EVENT_COLOR_PRESETS, METADATA_FIELDS, TYPE_META } from '@/domain/constants'
@@ -12,6 +12,84 @@ import { allTags, useTravelStore } from '@/store/useTravelStore'
 const toDateInput = (iso: string): string => iso.slice(0, 10)
 const toTimeInput = (iso: string): string => iso.slice(11, 16) || '00:00'
 const fromParts = (date: string, time: string): string => `${date}T${time.length === 5 ? `${time}:00` : time}`
+
+function isValidDateInput(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+}
+
+function isValidTimeInput(value: string): boolean {
+  if (!/^\d{2}:\d{2}$/.test(value)) return false
+  const [hour, minute] = value.split(':').map(Number)
+  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59
+}
+
+function TypedDateTimeInput({
+  id,
+  value,
+  kind,
+  onChange,
+  onInvalid,
+}: {
+  id: string
+  value: string
+  kind: 'date' | 'time'
+  onChange: (value: string) => void
+  onInvalid: (message: string | null) => void
+}) {
+  const [draft, setDraft] = useState(value)
+  const valid = kind === 'date' ? isValidDateInput(draft) : isValidTimeInput(draft)
+  const Icon = kind === 'date' ? CalendarDays : Clock
+  const placeholder = kind === 'date' ? 'AAAA-MM-DD' : 'HH:MM'
+  const message = kind === 'date' ? 'Use a data no formato AAAA-MM-DD.' : 'Use o horário no formato HH:MM.'
+
+  useEffect(() => {
+    setDraft(value)
+  }, [value])
+
+  const update = (next: string): void => {
+    setDraft(next)
+    if (kind === 'date' ? isValidDateInput(next) : isValidTimeInput(next)) {
+      onChange(next)
+      onInvalid(null)
+    } else {
+      onInvalid(next ? message : null)
+    }
+  }
+
+  return (
+    <div className="flex gap-2">
+      <Input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={draft}
+        aria-invalid={!valid && !!draft}
+        className="min-w-0 flex-1"
+        onChange={(e) => update(e.target.value)}
+        onBlur={() => onInvalid(!valid && draft ? message : null)}
+        required
+      />
+      <label
+        className="relative flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:bg-accent"
+        aria-label={`Selecionar ${kind === 'date' ? 'data' : 'horário'}`}
+      >
+        <Icon className="size-4" aria-hidden="true" />
+        <input
+          type={kind}
+          tabIndex={-1}
+          value={value}
+          onChange={(e) => update(e.target.value)}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          aria-label={`Abrir seletor de ${kind === 'date' ? 'data' : 'horário'}`}
+        />
+      </label>
+    </div>
+  )
+}
 
 interface Props {
   initial: TravelEvent
@@ -29,6 +107,7 @@ export function EventForm({ initial, isNew, onCancel }: Props) {
   const [ev, setEv] = useState<TravelEvent>(initial)
   const [newTag, setNewTag] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [dateError, setDateError] = useState<string | null>(null)
   const idp = `ev-${initial.id}`
 
   const tags = useMemo(() => allTags(settings, DEFAULT_TAGS), [settings])
@@ -70,6 +149,10 @@ export function EventForm({ initial, isNew, onCancel }: Props) {
   const submit = (e: React.FormEvent): void => {
     e.preventDefault()
     if (!ev.title.trim()) return setError('Informe um título.')
+    if (dateError) return setError(dateError)
+    const boundariesValid = isValidDateInput(toDateInput(ev.start)) && isValidDateInput(toDateInput(ev.end)) &&
+      (ev.allDay || (isValidTimeInput(toTimeInput(ev.start)) && isValidTimeInput(toTimeInput(ev.end))))
+    if (!boundariesValid) return setError('Informe datas e horários válidos.')
     if (parseLocal(ev.end) < parseLocal(ev.start)) return setError('O fim não pode ser anterior ao início.')
     if (ev.cost < 0 || Number.isNaN(ev.cost)) return setError('O custo deve ser zero ou positivo.')
     const metadata = { ...ev.metadata }
@@ -189,21 +272,21 @@ export function EventForm({ initial, isNew, onCancel }: Props) {
       {ev.allDay ? (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Data de início" htmlFor={`${idp}-start-date`}>
-            <Input
+            <TypedDateTimeInput
               id={`${idp}-start-date`}
-              type="date"
+              kind="date"
               value={toDateInput(ev.start)}
-              onChange={(e) => setDateTimePart('start', 'date', e.target.value)}
-              required
+              onChange={(value) => setDateTimePart('start', 'date', value)}
+              onInvalid={setDateError}
             />
           </Field>
           <Field label="Data de fim" htmlFor={`${idp}-end-date`}>
-            <Input
+            <TypedDateTimeInput
               id={`${idp}-end-date`}
-              type="date"
+              kind="date"
               value={toDateInput(ev.end)}
-              onChange={(e) => setDateTimePart('end', 'date', e.target.value)}
-              required
+              onChange={(value) => setDateTimePart('end', 'date', value)}
+              onInvalid={setDateError}
             />
           </Field>
         </div>
@@ -213,22 +296,21 @@ export function EventForm({ initial, isNew, onCancel }: Props) {
             <legend className="px-1 text-sm font-medium">Início</legend>
             <div className="grid grid-cols-2 gap-2">
               <Field label="Data" htmlFor={`${idp}-start-date`}>
-                <Input
+                <TypedDateTimeInput
                   id={`${idp}-start-date`}
-                  type="date"
+                  kind="date"
                   value={toDateInput(ev.start)}
-                  onChange={(e) => setDateTimePart('start', 'date', e.target.value)}
-                  required
+                  onChange={(value) => setDateTimePart('start', 'date', value)}
+                  onInvalid={setDateError}
                 />
               </Field>
               <Field label="Horário" htmlFor={`${idp}-start-time`}>
-                <Input
+                <TypedDateTimeInput
                   id={`${idp}-start-time`}
-                  type="time"
-                  step="60"
+                  kind="time"
                   value={toTimeInput(ev.start)}
-                  onChange={(e) => setDateTimePart('start', 'time', e.target.value)}
-                  required
+                  onChange={(value) => setDateTimePart('start', 'time', value)}
+                  onInvalid={setDateError}
                 />
               </Field>
             </div>
@@ -237,22 +319,21 @@ export function EventForm({ initial, isNew, onCancel }: Props) {
             <legend className="px-1 text-sm font-medium">Fim</legend>
             <div className="grid grid-cols-2 gap-2">
               <Field label="Data" htmlFor={`${idp}-end-date`}>
-                <Input
+                <TypedDateTimeInput
                   id={`${idp}-end-date`}
-                  type="date"
+                  kind="date"
                   value={toDateInput(ev.end)}
-                  onChange={(e) => setDateTimePart('end', 'date', e.target.value)}
-                  required
+                  onChange={(value) => setDateTimePart('end', 'date', value)}
+                  onInvalid={setDateError}
                 />
               </Field>
               <Field label="Horário" htmlFor={`${idp}-end-time`}>
-                <Input
+                <TypedDateTimeInput
                   id={`${idp}-end-time`}
-                  type="time"
-                  step="60"
+                  kind="time"
                   value={toTimeInput(ev.end)}
-                  onChange={(e) => setDateTimePart('end', 'time', e.target.value)}
-                  required
+                  onChange={(value) => setDateTimePart('end', 'time', value)}
+                  onInvalid={setDateError}
                 />
               </Field>
             </div>

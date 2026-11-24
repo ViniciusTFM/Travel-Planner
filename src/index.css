@@ -180,6 +180,14 @@
 }
 
 @media (max-width: 767px) {
+  .calendar-view-shell {
+    min-height: 42rem;
+  }
+
+  .calendar-view-shell .fc-timegrid-slot {
+    height: 3.4em;
+  }
+
   .fc .fc-event {
     touch-action: manipulation;
   }
