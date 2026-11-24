@@ -45,11 +45,12 @@ export function CalendarPanel() {
             size="sm"
             aria-expanded={open}
             aria-controls="calendar-filters"
+            className="min-h-11 sm:min-h-9"
             onClick={() => setOpen((o) => !o)}
           >
             <Filter /> Filtros{active > 0 && ` (${active})`}
           </Button>
-          <Button size="sm" onClick={() => startDraft()}>
+          <Button size="sm" className="min-h-11 sm:min-h-9" onClick={() => startDraft()}>
             <Plus /> Evento
           </Button>
         </div>
@@ -64,7 +65,7 @@ export function CalendarPanel() {
                 type="button"
                 aria-label="Limpar busca"
                 onClick={() => setFilters({ query: '' })}
-                className="rounded p-0.5 hover:bg-accent"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded p-0.5 hover:bg-accent"
               >
                 <X className="size-3.5" />
               </button>
@@ -83,7 +84,7 @@ export function CalendarPanel() {
                         type="button"
                         aria-pressed={on}
                         onClick={() => toggle('types', t)}
-                        className={cn('flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs', on ? 'bg-accent font-medium' : 'hover:bg-accent')}
+                        className={cn('flex min-h-11 touch-manipulation items-center gap-1.5 rounded-full border px-2.5 py-2 text-xs', on ? 'bg-accent font-medium' : 'hover:bg-accent')}
                       >
                         <span className="size-2.5 rounded-full" style={{ background: TYPE_META[t].color }} aria-hidden="true" />
                         {TYPE_META[t].label}
@@ -102,7 +103,7 @@ export function CalendarPanel() {
                       aria-pressed={filters.tags.includes(t)}
                       onClick={() => toggle('tags', t)}
                       className={cn(
-                        'rounded-full border px-2.5 py-1 text-xs',
+                        'min-h-11 touch-manipulation rounded-full border px-2.5 py-2 text-xs',
                         filters.tags.includes(t) ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-accent',
                       )}
                     >

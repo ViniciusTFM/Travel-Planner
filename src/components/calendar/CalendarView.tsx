@@ -159,7 +159,7 @@ export function CalendarView() {
   }
 
   return (
-    <div className="h-full min-h-[560px]" aria-label="Calendário da viagem">
+    <div className="h-full min-h-0" aria-label="Calendário da viagem">
       <FullCalendar
         ref={ref}
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -177,8 +177,8 @@ export function CalendarView() {
         editable
         selectable
         selectMirror
-        selectLongPressDelay={250}
-        eventLongPressDelay={250}
+        selectLongPressDelay={550}
+        eventLongPressDelay={550}
         nowIndicator
         dayMaxEvents={isNarrow ? 2 : 4}
         eventOrder="start,-duration,title"

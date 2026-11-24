@@ -51,7 +51,7 @@ function Notice() {
   return (
     <div
       role={notice.kind === 'error' ? 'alert' : 'status'}
-      className={`fixed bottom-20 left-1/2 z-[60] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-lg border p-3 text-sm shadow-lg md:bottom-6 ${
+      className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-[60] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-lg border p-3 text-sm shadow-lg md:bottom-6 ${
         notice.kind === 'error' ? 'border-destructive bg-destructive text-destructive-foreground' : 'bg-card'
       }`}
     >
@@ -86,7 +86,7 @@ export function AppShell() {
       >
         Pular para o conteúdo
       </a>
-      <header className="flex items-center gap-2 border-b px-3 py-2">
+      <header className="flex items-center gap-2 border-b px-3 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
         <div className="flex items-center gap-2 font-semibold">
           <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Plane className="size-4" aria-hidden="true" />
@@ -94,7 +94,7 @@ export function AppShell() {
           <span className="hidden sm:inline">Travel Planner</span>
         </div>
         <span className="hidden max-w-[16rem] truncate text-sm text-muted-foreground lg:inline">/ {title}</span>
-        <div className="mx-2 flex-1 md:mx-6 md:max-w-xl">
+        <div className="mx-2 min-w-0 flex-1 md:mx-6 md:max-w-xl">
           <GlobalSearch />
         </div>
         <ThemeToggle />
@@ -118,10 +118,10 @@ export function AppShell() {
           <Sidebar section={section} />
         </div>
 
-        <main id="conteudo" tabIndex={-1} className="min-h-0 overflow-y-auto p-3 pb-20 md:p-4 md:pb-4">
+        <main id="conteudo" tabIndex={-1} className="min-h-0 overflow-y-auto overscroll-contain p-3 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:p-4 md:pb-4">
           {section === 'home' && <HomeView />}
           {section === 'calendar' && (
-            <div className="h-[calc(100dvh-9.5rem)] min-h-[620px] md:h-full">
+            <div className="h-full min-h-0">
               <CalendarPanel />
             </div>
           )}
@@ -146,7 +146,10 @@ export function AppShell() {
 
       {!isDesktop && (
         <Dialog open={panelOpen} onOpenChange={(o) => !o && cancelDraft()}>
-          <DialogContent side={isTablet ? 'right' : 'bottom'} className="p-4">
+          <DialogContent
+            side={isTablet ? 'right' : 'bottom'}
+            className="min-h-0 overflow-hidden p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          >
             <DialogTitle className="sr-only">Evento</DialogTitle>
             <DialogDescription className="sr-only">Detalhes, editor e custos do evento selecionado.</DialogDescription>
             <div className="min-h-0 flex-1 pt-6">

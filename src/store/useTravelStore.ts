@@ -11,16 +11,14 @@ import type {
 import { createEmptyData, createEvent, EMPTY_FILTERS, type EventFilters } from '@/domain/calc'
 import { createSampleData } from '@/domain/sample'
 import { STORAGE_PREFIX } from '@/domain/constants'
-import { storage } from '@/storage'
+import { currentUserId } from '@/services/auth'
+import { storageForUser, type StorageAdapter } from '@/storage'
 import { clearShareHash, readSharedTripFromLocation } from '@/services/share'
 import { uid } from '@/lib/utils'
 
 export type Section = 'home' | 'calendar' | 'costs' | 'documents' | 'checklist' | 'settings'
 export type CalView = 'agenda' | 'day' | 'week' | 'month' | 'timeline'
 export type RightTab = 'details' | 'editor' | 'costs'
-
-const ACTIVE_KEY = `${STORAGE_PREFIX}:active`
-const VIEW_KEY = `${STORAGE_PREFIX}:calview`
 
 interface State {
   ready: boolean
@@ -75,6 +73,15 @@ interface State {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined
+let activeStorage: StorageAdapter | null = null
+let activeUserId: string | null = null
+
+const scopedKey = (suffix: string): string => `${STORAGE_PREFIX}:user:${activeUserId}:${suffix}`
+
+function requireStorage(): StorageAdapter {
+  if (!activeStorage) throw new Error('A sessão do usuário ainda não foi inicializada.')
+  return activeStorage
+}
 
 export const useTravelStore = create<State>((set, get) => {
   /** Aplica uma mudança no documento único e agenda a persistência. */
@@ -87,15 +94,15 @@ export const useTravelStore = create<State>((set, get) => {
   const persistNow = async (): Promise<void> => {
     clearTimeout(saveTimer)
     try {
-      await storage.save(get().data)
-      set({ library: await storage.list() })
+      await requireStorage().save(get().data)
+      set({ library: await requireStorage().list() })
     } catch (err) {
       set({ notice: { kind: 'error', text: err instanceof Error ? err.message : 'Falha ao salvar.' } })
     }
   }
 
   const activate = async (data: TravelData): Promise<void> => {
-    localStorage.setItem(ACTIVE_KEY, data.trip.id)
+    localStorage.setItem(scopedKey('active'), data.trip.id)
     set({ data, selectedEventId: null, draft: null, filters: EMPTY_FILTERS, focusDate: data.trip.startDate })
     await persistNow()
   }
@@ -106,7 +113,7 @@ export const useTravelStore = create<State>((set, get) => {
     library: [],
     notice: null,
     section: 'calendar',
-    calView: (localStorage.getItem(VIEW_KEY) as CalView | null) ?? 'week',
+    calView: 'week',
     rightTab: 'details',
     selectedEventId: null,
     draft: null,
@@ -115,7 +122,16 @@ export const useTravelStore = create<State>((set, get) => {
     tripDialog: null,
 
     init: async () => {
-      let library = await storage.list()
+      const userId = currentUserId()
+      if (!userId) {
+        set({ ready: true, notice: { kind: 'error', text: 'Sessão inválida. Entre novamente.' } })
+        return
+      }
+      activeUserId = userId
+      activeStorage = storageForUser(userId)
+      set({ calView: (localStorage.getItem(scopedKey('calview')) as CalView | null) ?? 'week' })
+
+      let library = await requireStorage().list()
       let shared: TravelData | null = null
       try {
         shared = readSharedTripFromLocation()
@@ -127,26 +143,26 @@ export const useTravelStore = create<State>((set, get) => {
         const exists = library.some((t) => t.id === shared!.trip.id)
         const data = exists ? { ...shared, trip: { ...shared.trip, id: uid('trip') } } : shared
         clearShareHash()
-        await storage.save(data)
-        localStorage.setItem(ACTIVE_KEY, data.trip.id)
-        library = await storage.list()
+        await requireStorage().save(data)
+        localStorage.setItem(scopedKey('active'), data.trip.id)
+        library = await requireStorage().list()
         set({ notice: { kind: 'info', text: `Viagem "${data.trip.title}" restaurada a partir do link.` } })
       } else if (library.length === 0) {
-        await storage.save(createSampleData())
-        library = await storage.list()
+        await requireStorage().save(createSampleData())
+        library = await requireStorage().list()
       }
-      const wanted = localStorage.getItem(ACTIVE_KEY)
+      const wanted = localStorage.getItem(scopedKey('active'))
       const id = library.find((t) => t.id === wanted)?.id ?? library[0]?.id
-      const data = id ? await storage.load(id) : null
+      const data = id ? await requireStorage().load(id) : null
       const finalData = data ?? createEmptyData()
       set({ library, data: finalData, ready: true, focusDate: finalData.trip.startDate })
-      localStorage.setItem(ACTIVE_KEY, finalData.trip.id)
+      localStorage.setItem(scopedKey('active'), finalData.trip.id)
     },
 
     setNotice: (notice) => set({ notice }),
     setSection: (section) => set({ section }),
     setCalView: (calView) => {
-      localStorage.setItem(VIEW_KEY, calView)
+      if (activeUserId) localStorage.setItem(scopedKey('calview'), calView)
       set({ calView })
     },
     setRightTab: (rightTab) => set({ rightTab }),
@@ -173,13 +189,13 @@ export const useTravelStore = create<State>((set, get) => {
     },
     updateTrip: (t) => commit((d) => ({ ...d, trip: { ...d.trip, ...t } })),
     deleteTrip: async (id) => {
-      await storage.remove(id)
-      let library = await storage.list()
-      let next = library[0] ? await storage.load(library[0].id) : null
+      await requireStorage().remove(id)
+      let library = await requireStorage().list()
+      let next = library[0] ? await requireStorage().load(library[0].id) : null
       if (!next) {
         next = createEmptyData({ title: 'Minha viagem' })
-        await storage.save(next)
-        library = await storage.list()
+        await requireStorage().save(next)
+        library = await requireStorage().list()
       }
       set({ library })
       await activate(next)
@@ -187,7 +203,7 @@ export const useTravelStore = create<State>((set, get) => {
     switchTrip: async (id) => {
       if (id === get().data.trip.id) return
       await persistNow()
-      const data = await storage.load(id)
+      const data = await requireStorage().load(id)
       if (data) {
         await activate(data)
         set({ section: 'calendar' })
@@ -196,10 +212,9 @@ export const useTravelStore = create<State>((set, get) => {
     importData: (incoming) => {
       void (async () => {
         await persistNow()
-        const exists = get().library.some((t) => t.id === incoming.trip.id)
-        const data = exists ? { ...incoming, trip: { ...incoming.trip, id: uid('trip') } } : incoming
+        const data = { ...incoming, trip: { ...incoming.trip, id: uid('trip') } }
         await activate(data)
-        set({ section: 'calendar', notice: { kind: 'info', text: `Viagem "${data.trip.title}" importada.` } })
+        set({ section: 'calendar', notice: { kind: 'info', text: `Viagem "${data.trip.title}" importada como uma cópia.` } })
       })()
     },
 
@@ -272,6 +287,6 @@ export function allTags(settings: Settings, defaults: string[]): string[] {
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     const { ready, data } = useTravelStore.getState()
-    if (ready) void storage.save(data)
+    if (ready) void activeStorage?.save(data)
   })
 }

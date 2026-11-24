@@ -28,9 +28,9 @@ export function EventPanel() {
   const current = draft ?? selected
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <Tabs items={TABS} value={tab} onChange={setTab} label="Painel do evento" className="w-full" />
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <Tabs items={TABS} value={tab} onChange={setTab} label="Painel do evento" className="w-full shrink-0" />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
         {tab === 'costs' && <CostSummary />}
 
         {tab === 'details' &&

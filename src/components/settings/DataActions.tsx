@@ -33,11 +33,23 @@ export function DataActions() {
     }
   }
 
+  const copyJson = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+      setNotice({ kind: 'info', text: 'Dados JSON copiados. Envie-os para outro usuário importar.' })
+    } catch {
+      setNotice({ kind: 'error', text: 'Não foi possível copiar o JSON. Use Exportar JSON para baixar o arquivo.' })
+    }
+  }
+
   return (
     <>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={() => exportJson(data)}>
           <Download /> Exportar JSON
+        </Button>
+        <Button variant="outline" onClick={() => void copyJson()}>
+          <Copy /> Copiar JSON
         </Button>
         <Button
           variant="outline"
@@ -64,6 +76,9 @@ export function DataActions() {
           }}
         />
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Para compartilhar com outro usuário cadastrado, exporte ou copie o JSON. A outra pessoa deve entrar na própria conta e importar esses dados; uma cópia independente será criada.
+      </p>
 
       <Dialog open={shareUrl !== null} onOpenChange={(o) => !o && setShareUrl(null)}>
         <DialogContent>

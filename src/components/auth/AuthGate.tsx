@@ -9,11 +9,12 @@ interface Props {
   children: React.ReactNode
 }
 
-type Mode = 'login' | 'setup'
+type Mode = 'login' | 'register'
 
 export function AuthGate({ children }: Props) {
   const [loading, setLoading] = useState(true)
   const [authenticated, setAuthenticated] = useState(false)
+  const [configured, setConfigured] = useState(false)
   const [mode, setMode] = useState<Mode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -23,7 +24,8 @@ export function AuthGate({ children }: Props) {
 
   useEffect(() => {
     const configured = hasCredentials()
-    setMode(configured ? 'login' : 'setup')
+    setConfigured(configured)
+    setMode(configured ? 'login' : 'register')
     setAuthenticated(configured && isAuthenticated())
     setLoading(false)
   }, [])
@@ -43,7 +45,7 @@ export function AuthGate({ children }: Props) {
     setError(null)
     setBusy(true)
     try {
-      if (mode === 'setup') {
+      if (mode === 'register') {
         if (password !== confirmation) throw new Error('As senhas não coincidem.')
         await registerLocalUser(username, password)
       } else {
@@ -64,12 +66,12 @@ export function AuthGate({ children }: Props) {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-3 text-center">
           <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            {mode === 'setup' ? <UserPlus className="size-6" aria-hidden="true" /> : <LockKeyhole className="size-6" aria-hidden="true" />}
+            {mode === 'register' ? <UserPlus className="size-6" aria-hidden="true" /> : <LockKeyhole className="size-6" aria-hidden="true" />}
           </div>
           <div>
             <CardTitle className="text-xl">Travel Planner</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              {mode === 'setup' ? 'Crie seu acesso local para começar' : 'Entre para acessar suas viagens'}
+              {mode === 'register' ? 'Crie seu cadastro local para começar' : 'Entre para acessar suas viagens'}
             </p>
           </div>
         </CardHeader>
@@ -94,14 +96,14 @@ export function AuthGate({ children }: Props) {
               <Input
                 id="auth-password"
                 type="password"
-                autoComplete={mode === 'setup' ? 'new-password' : 'current-password'}
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
               />
             </Field>
-            {mode === 'setup' && (
+            {mode === 'register' && (
               <Field label="Confirmar senha" htmlFor="auth-confirmation">
                 <Input
                   id="auth-confirmation"
@@ -115,10 +117,29 @@ export function AuthGate({ children }: Props) {
               </Field>
             )}
             <Button type="submit" className="w-full" disabled={busy}>
-              {mode === 'setup' ? <UserPlus /> : <LogIn />}
-              {busy ? 'Aguarde...' : mode === 'setup' ? 'Criar acesso' : 'Entrar'}
+              {mode === 'register' ? <UserPlus /> : <LogIn />}
+              {busy ? 'Aguarde...' : mode === 'register' ? 'Criar cadastro' : 'Entrar'}
             </Button>
           </form>
+          {configured && (
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              {mode === 'register' ? 'Já possui cadastro?' : 'Ainda não possui cadastro?'}{' '}
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0"
+                onClick={() => {
+                  setMode(mode === 'register' ? 'login' : 'register')
+                  setError(null)
+                  setPassword('')
+                  setConfirmation('')
+                }}
+              >
+                {mode === 'register' ? 'Entrar' : 'Criar cadastro'}
+              </Button>
+            </p>
+          )}
           <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
             <KeyRound className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
             Este acesso é local neste navegador. A sessão é encerrada ao fechar a aba ou sair.

@@ -16,18 +16,18 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed z-50 flex flex-col gap-4 border bg-background p-5 shadow-xl',
+        'fixed z-50 flex min-h-0 flex-col gap-4 border bg-background p-5 shadow-xl',
         side === 'center' &&
-          'left-1/2 top-1/2 max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg',
-        side === 'right' && 'inset-y-0 right-0 h-full w-full max-w-md overflow-y-auto border-l',
-        side === 'bottom' && 'inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-2xl',
+          'left-1/2 top-1/2 max-h-[calc(90dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg',
+        side === 'right' && 'inset-y-0 right-0 h-full w-full max-w-md overflow-y-auto border-l pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]',
+        side === 'bottom' && 'inset-x-0 bottom-0 max-h-[calc(100dvh-env(safe-area-inset-top))] overflow-hidden rounded-t-2xl pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
         className,
       )}
       {...props}
     >
       {children}
       <DialogPrimitive.Close
-        className="absolute right-3 top-3 rounded-sm p-1 opacity-70 hover:opacity-100"
+        className="absolute right-[calc(0.5rem+env(safe-area-inset-right))] top-[calc(0.5rem+env(safe-area-inset-top))] flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 opacity-70 hover:opacity-100"
         aria-label="Fechar"
       >
         <X className="size-4" />

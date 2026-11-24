@@ -169,17 +169,17 @@ export function EventForm({ initial, isNew, onCancel }: Props) {
               aria-pressed={ev.color?.toLowerCase() === color}
               title={color}
               onClick={() => patch({ color })}
-              className="size-7 rounded-full border-2 border-background shadow-sm ring-1 ring-border transition-transform hover:scale-110 aria-pressed:ring-2 aria-pressed:ring-primary"
+              className="flex size-11 touch-manipulation items-center justify-center rounded-full border-2 border-background shadow-sm ring-1 ring-border transition-transform hover:scale-110 aria-pressed:ring-2 aria-pressed:ring-primary"
               style={{ backgroundColor: color }}
             />
           ))}
         </div>
       </fieldset>
 
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex min-h-11 items-center gap-2 text-sm touch-manipulation">
         <input
           type="checkbox"
-          className="size-4 accent-[hsl(var(--primary))]"
+          className="size-5 accent-[hsl(var(--primary))]"
           checked={ev.allDay}
           onChange={(e) => setAllDay(e.target.checked)}
         />
@@ -339,7 +339,7 @@ export function EventForm({ initial, isNew, onCancel }: Props) {
               aria-pressed={ev.tags.includes(t)}
               onClick={() => toggleTag(t)}
               className={cn(
-                'rounded-full border px-2.5 py-1 text-xs',
+                'min-h-11 touch-manipulation rounded-full border px-2.5 py-2 text-xs',
                 ev.tags.includes(t) ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-accent',
               )}
             >
@@ -369,6 +369,7 @@ export function EventForm({ initial, isNew, onCancel }: Props) {
             type="button"
             variant="outline"
             size="icon"
+            className="min-h-11 min-w-11"
             aria-label="Adicionar tag"
             onClick={() => {
               const t = newTag.trim()
@@ -394,7 +395,7 @@ export function EventForm({ initial, isNew, onCancel }: Props) {
         <p className="text-xs text-muted-foreground">{attached.length} documento(s) anexado(s) a este evento.</p>
       )}
 
-      <div className="sticky bottom-0 -mx-1 flex flex-wrap gap-2 bg-background/95 px-1 py-2 backdrop-blur">
+      <div className="sticky bottom-0 -mx-1 flex flex-wrap gap-2 bg-background/95 px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur">
         <Button type="submit">{isNew ? 'Criar evento' : 'Salvar'}</Button>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar

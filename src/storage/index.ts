@@ -1,7 +1,10 @@
+import { isLegacyUser } from '@/services/auth'
 import { LocalStorageAdapter } from './LocalStorageAdapter'
 import type { StorageAdapter } from './StorageAdapter'
 
-/** Único ponto de troca de backend (LocalStorage → Supabase/Firebase/S3). */
-export const storage: StorageAdapter = new LocalStorageAdapter()
+/** Cria o armazenamento isolado da conta autenticada. */
+export function storageForUser(userId: string): StorageAdapter {
+  return new LocalStorageAdapter(userId, isLegacyUser(userId))
+}
 
 export type { StorageAdapter }

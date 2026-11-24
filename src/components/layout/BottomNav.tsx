@@ -25,7 +25,7 @@ export function BottomNav({ section }: { section: Section }) {
               aria-current={section === s ? 'page' : undefined}
               onClick={() => setSection(s)}
               className={cn(
-                'flex h-14 w-full flex-col items-center justify-center gap-0.5 text-[11px]',
+                'flex h-14 min-h-11 w-full touch-manipulation flex-col items-center justify-center gap-0.5 text-[11px]',
                 section === s ? 'font-semibold text-primary' : 'text-muted-foreground',
               )}
             >
