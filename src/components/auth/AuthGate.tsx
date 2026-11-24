@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { KeyRound, LockKeyhole, LogIn, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/misc'
 import { Field, Input } from '@/components/ui/form'
-import { hasCredentials, isAuthenticated, loginLocalUser, registerLocalUser } from '@/services/auth'
+import { cacheAuthSession, getAuthSession, loginUser, registerUser, subscribeAuth } from '@/services/auth'
 
 interface Props {
   children: React.ReactNode
@@ -13,21 +14,33 @@ type Mode = 'login' | 'register'
 
 export function AuthGate({ children }: Props) {
   const [loading, setLoading] = useState(true)
-  const [authenticated, setAuthenticated] = useState(false)
-  const [configured, setConfigured] = useState(false)
+  const [session, setSession] = useState<Session | null>(null)
   const [mode, setMode] = useState<Mode>('login')
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<{ kind: 'info' | 'error'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    const configured = hasCredentials()
-    setConfigured(configured)
-    setMode(configured ? 'login' : 'register')
-    setAuthenticated(configured && isAuthenticated())
-    setLoading(false)
+    let mounted = true
+    const unsubscribe = subscribeAuth((nextSession) => {
+      if (mounted) setSession(nextSession)
+    })
+    void getAuthSession()
+      .then((nextSession) => {
+        if (mounted) setSession(nextSession)
+      })
+      .catch((err) => {
+        if (mounted) setFeedback({ kind: 'error', text: err instanceof Error ? err.message : 'Não foi possível verificar a sessão.' })
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+    return () => {
+      mounted = false
+      unsubscribe()
+    }
   }, [])
 
   if (loading) {
@@ -38,24 +51,32 @@ export function AuthGate({ children }: Props) {
     )
   }
 
-  if (authenticated) return <>{children}</>
+  if (session) return <>{children}</>
 
   const submit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault()
-    setError(null)
+    setFeedback(null)
     setBusy(true)
     try {
       if (mode === 'register') {
         if (password !== confirmation) throw new Error('As senhas não coincidem.')
-        await registerLocalUser(username, password)
+        const createdSession = await registerUser(email, password)
+        if (!createdSession) {
+          setMode('login')
+          setFeedback({ kind: 'info', text: 'Cadastro criado. Confirme seu e-mail e depois entre na conta.' })
+        } else {
+          cacheAuthSession(createdSession)
+          setSession(createdSession)
+        }
       } else {
-        await loginLocalUser(username, password)
+        const loggedSession = await loginUser(email, password)
+        cacheAuthSession(loggedSession)
+        setSession(loggedSession)
       }
-      setAuthenticated(true)
       setPassword('')
       setConfirmation('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível autenticar.')
+      setFeedback({ kind: 'error', text: err instanceof Error ? err.message : 'Não foi possível autenticar.' })
     } finally {
       setBusy(false)
     }
@@ -71,24 +92,28 @@ export function AuthGate({ children }: Props) {
           <div>
             <CardTitle className="text-xl">Travel Planner</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              {mode === 'register' ? 'Crie seu cadastro local para começar' : 'Entre para acessar suas viagens'}
+              {mode === 'register' ? 'Crie seu cadastro para acessar a agenda compartilhada' : 'Entre para acessar a agenda compartilhada'}
             </p>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={(e) => void submit(e)} className="space-y-4" noValidate>
-            {error && (
-              <p role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
+            {feedback && (
+              <p
+                role={feedback.kind === 'error' ? 'alert' : 'status'}
+                className={`rounded-md p-3 text-sm ${feedback.kind === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-foreground'}`}
+              >
+                {feedback.text}
               </p>
             )}
-            <Field label="Usuário" htmlFor="auth-username">
+            <Field label="E-mail" htmlFor="auth-email">
               <Input
-                id="auth-username"
-                autoComplete="username"
+                id="auth-email"
+                type="email"
+                autoComplete="email"
                 autoFocus
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </Field>
@@ -121,28 +146,26 @@ export function AuthGate({ children }: Props) {
               {busy ? 'Aguarde...' : mode === 'register' ? 'Criar cadastro' : 'Entrar'}
             </Button>
           </form>
-          {configured && (
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              {mode === 'register' ? 'Já possui cadastro?' : 'Ainda não possui cadastro?'}{' '}
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto p-0"
-                onClick={() => {
-                  setMode(mode === 'register' ? 'login' : 'register')
-                  setError(null)
-                  setPassword('')
-                  setConfirmation('')
-                }}
-              >
-                {mode === 'register' ? 'Entrar' : 'Criar cadastro'}
-              </Button>
-            </p>
-          )}
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            {mode === 'register' ? 'Já possui cadastro?' : 'Ainda não possui cadastro?'}{' '}
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto p-0"
+              onClick={() => {
+                setMode(mode === 'register' ? 'login' : 'register')
+                setFeedback(null)
+                setPassword('')
+                setConfirmation('')
+              }}
+            >
+              {mode === 'register' ? 'Entrar' : 'Criar cadastro'}
+            </Button>
+          </p>
           <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
             <KeyRound className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            Este acesso é local neste navegador. A sessão é encerrada ao fechar a aba ou sair.
+            Sua conta e a agenda ficam sincronizadas pelo Supabase para todos os usuários autenticados.
           </p>
         </CardContent>
       </Card>

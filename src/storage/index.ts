@@ -1,10 +1,7 @@
-import { isLegacyUser } from '@/services/auth'
-import { LocalStorageAdapter } from './LocalStorageAdapter'
+import { SupabaseStorageAdapter } from './SupabaseStorageAdapter'
 import type { StorageAdapter } from './StorageAdapter'
 
-/** Cria o armazenamento isolado da conta autenticada. */
-export function storageForUser(userId: string): StorageAdapter {
-  return new LocalStorageAdapter(userId, isLegacyUser(userId))
-}
+/** Único armazenamento remoto compartilhado por todos os usuários autenticados. */
+export const storage: StorageAdapter = new SupabaseStorageAdapter()
 
 export type { StorageAdapter }

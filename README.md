@@ -4,7 +4,7 @@ Aplicação web para planejamento completo de viagens nacionais e internacionais
 
 A aplicação foi projetada para substituir planilhas, notas, PDFs e mensagens dispersas por um documento único de viagem, com uma experiência inspirada em Google Travel, TripIt, Wanderlog, Notion, Outlook Calendar e Microsoft Teams Calendar.
 
-> **Estado atual:** aplicação frontend funcional, com persistência local no navegador. Não existe backend, API, banco SQL ou sincronização em nuvem neste momento.
+> **Estado atual:** aplicação com autenticação Supabase e uma biblioteca JSON de viagens compartilhada entre todos os usuários autenticados. Configure as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` e execute o SQL em `supabase/schema.sql` no projeto Supabase antes do primeiro acesso.
 
 ## Sumário
 
@@ -1024,3 +1024,24 @@ Possíveis evoluções compatíveis com a arquitetura atual:
 ## Licença
 
 O projeto ainda não define um arquivo de licença. Antes de distribuir ou publicar o código, escolha e adicione uma licença compatível com o uso pretendido.
+
+## Supabase e agenda compartilhada
+
+A autenticação e a persistência remota usam Supabase. Todos os usuários autenticados acessam a mesma linha da tabela `travel_planner_shared`; o campo `data` contém a biblioteca JSON de viagens compartilhada.
+
+### Configuração
+
+1. Crie um arquivo `.env.local` a partir de `.env.example`:
+
+   ```env
+   VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+   VITE_SUPABASE_PUBLISHABLE_KEY=sua-chave-pública
+   ```
+
+2. No SQL Editor do Supabase, execute [`supabase/schema.sql`](supabase/schema.sql). O script cria a tabela, habilita RLS e permite leitura e escrita somente para usuários autenticados.
+3. No Authentication > Providers do Supabase, habilite Email. Se a confirmação de e-mail estiver habilitada, o usuário precisará confirmar o endereço antes do primeiro login.
+4. No Vercel, configure as mesmas duas variáveis como Environment Variables para os ambientes de desenvolvimento e produção.
+
+Nunca use `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET` ou uma senha PostgreSQL no frontend. Essas credenciais são privadas e não devem ser commitadas nem expostas em variáveis `VITE_*`.
+
+A gravação atual usa o modelo last write wins: quando duas pessoas editam a agenda ao mesmo tempo, a última gravação recebida substitui a anterior. A tabela JSON também mantém os documentos em `dataUrl`; para anexos maiores, a próxima evolução deve usar Supabase Storage.

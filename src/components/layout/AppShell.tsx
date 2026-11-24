@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { useIsDesktop, useIsTablet } from '@/hooks/useMediaQuery'
 import { useTheme, type Theme } from '@/hooks/useTheme'
 import { useTravelStore } from '@/store/useTravelStore'
-import { currentUsername, logoutLocalUser } from '@/services/auth'
+import { currentUsername, logoutUser } from '@/services/auth'
 import { CalendarPanel } from '@/components/calendar/CalendarPanel'
 import { ChecklistView } from '@/components/checklist/ChecklistView'
 import { DocumentsView } from '@/components/documents/DocumentsView'
@@ -71,6 +71,7 @@ export function AppShell() {
   const selectedId = useTravelStore((s) => s.selectedEventId)
   const draft = useTravelStore((s) => s.draft)
   const cancelDraft = useTravelStore((s) => s.cancelDraft)
+  const setNotice = useTravelStore((s) => s.setNotice)
   const isDesktop = useIsDesktop()
   const isTablet = useIsTablet()
   const username = currentUsername()
@@ -105,8 +106,9 @@ export function AppShell() {
           aria-label="Sair da sessão"
           title="Sair"
           onClick={() => {
-            logoutLocalUser()
-            window.location.reload()
+            void logoutUser().catch((err) => {
+              setNotice({ kind: 'error', text: err instanceof Error ? err.message : 'Não foi possível sair.' })
+            })
           }}
         >
           <LogOut />
